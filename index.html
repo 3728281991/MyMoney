@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyMoney - Финансовый трекер</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase App (обязательный) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Firebase Auth -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary-bg: #3F3C40;
+            --accent: #E6FE7B;
+            --card-bg: #4A474B;
+            --text-light: #FFFFFF;
+            --text-dark: #3F3C40;
+            --income: #7BE684;
+            --expense: #FE7B7B;
+            --transfer: #7BABFE;
+            --over-budget: #FF5252;
+        }
+        
+        body {
+            background-color: var(--primary-bg);
+            color: var(--text-light);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Стили для экрана входа */
+        .auth-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .auth-logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+        
+        .auth-title {
+            font-size: 24px;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .auth-buttons {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .auth-btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            border: none;
+            background: var(--card-bg);
+            color: var(--text-light);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-btn i {
+            margin-right: 10px;
+        }
+        
+        .auth-btn:hover {
+            background: #565458;
+        }
+        
+        /* Основной интерфейс */
+        .app-container {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        button {
+            color: var(--text-light);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .balance-card {
+            width: 100%;
+            min-height: 180px;
+            background-color: var(--accent);
+            border-radius: 20px;
+            padding: 25px;
+            color: var(--text-dark);
+            margin-bottom: 25px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .balance-title {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .balance-amount {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .balance-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .action-btn {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            background: #565458;
+        }
+        
+        .action-btn i {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .action-btn span {
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .tabs {
+            display: flex;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .operations-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            max-height: 40vh;
+        }
+        
+        .operation {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .operation:last-child {
+            border-bottom: none;
+        }
+        
+        .operation-info {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .operation-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .operation-details {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .operation-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .operation-category {
+            font-size: 12px;
+            opacity: 0.7;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .operation-amount {
+            font-weight: 600;
+            align-self: center;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        
+        .income {
+            color: var(--income);
+        }
+        
+        .expense {
+            color: var(--expense);
+        }
+        
+        .transfer {
+            color: var(--transfer);
+        }
+        
+        .nav {
+            display: flex;
+            justify-content: space-around;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-light);
+            text-decoration: none;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .nav-item.active {
+            color: var(--accent);
+        }
+        
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: var(--primary-bg);
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            color: var(--text-light);
+            font-size: 16px;
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            color: var(--text-light);
+            font-size: 16px;
+            appearance: none;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent);
+            color: var(--text-dark);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .category-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .category-item {
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .category-item:hover {
+            background: #565458;
+        }
+        
+        .category-item.selected {
+            background: var(--accent);
+            color: var(--text-dark);
+        }
+        
+        .account-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .account-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .account-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 12px;
+        }
+        
+        .budget-item {
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .budget-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .budget-progress {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        
+        .budget-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+        }
+        
+        .budget-over {
+            background: var(--over-budget);
+        }
+        
+        .budget-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.7;
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 340px) {
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .balance-amount {
+                font-size: 36px;
+            }
+        }
+        
+        @media (min-width: 768px) {
+            body {
+                max-width: 400px;
+                margin: 0 auto;
+            }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading i {
+            font-size: 24px;
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: var(--expense);
+            font-size: 14px;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран аутентификации -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-logo">
+            <i class="fas fa-wallet"></i>
+        </div>
+        <h1 class="auth-title">MyMoney - контроль финансов</h1>
+        <div class="auth-buttons">
+            <button class="auth-btn" id="googleSignIn">
+                <i class="fab fa-google"></i> Войти через Google
+            </button>
+            <button class="auth-btn" id="emailSignIn">
+                <i class="fas fa-envelope"></i> Войти по почте
+            </button>
+            <button class="auth-btn" id="phoneSignIn">
+                <i class="fas fa-phone"></i> Войти по телефону
+            </button>
+        </div>
+    </div>
+
+    <!-- Основной интерфейс приложения -->
+    <div class="app-container" id="appContainer">
+        <header>
+            <button onclick="showSettings()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Мои финансы</h1>
+            <div class="user-avatar" id="userAvatar" onclick="showProfile()">
+                <i class="fas fa-user"></i>
+            </div>
+        </header>
+        
+        <main>
+            <div class="balance-card">
+                <div class="balance-title">Общий баланс</div>
+                <div class="balance-amount" id="totalBalance">0 ₽</div>
+                <div class="balance-details">
+                    <span>Доходы: <span id="totalIncome">0 ₽</span></span>
+                    <span>Расходы: <span id="totalExpenses">0 ₽</span></span>
+                </div>
+            </div>
+            
+            <div class="quick-actions">
+                <button class="action-btn" onclick="showAddOperationModal('expense')">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Расход</span>
+                </button>
+                <button class="action-btn" onclick="showAddOperationModal('income')">
+                    <i class="fas fa-coins"></i>
+                    <span>Доход</span>
+                </button>
+                <button class="action-btn" onclick="showAddOperationModal('transfer')">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Перевод</span>
+                </button>
+                <button class="action-btn" onclick="showReports()">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Отчеты</span>
+                </button>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('operations')">Операции</div>
+                <div class="tab" onclick="switchTab('accounts')">Счета</div>
+                <div class="tab" onclick="switchTab('budgets')">Бюджеты</div>
+            </div>
+            
+            <div class="operations-list" id="operationsList">
+                <div class="loading" id="operationsLoading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <!-- Операции будут добавляться здесь через JavaScript -->
+            </div>
+        </main>
+        
+        <nav class="nav">
+            <a class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Главная</span>
+            </a>
+            <a class="nav-item" onclick="showReports()">
+                <i class="fas fa-chart-bar"></i>
+                <span>Аналитика</span>
+            </a>
+            <a class="nav-item" onclick="showAddOperationModal()">
+                <i class="fas fa-plus-circle"></i>
+                <span>Добавить</span>
+            </a>
+            <a class="nav-item" onclick="showAccounts()">
+                <i class="fas fa-wallet"></i>
+                <span>Счета</span>
+            </a>
+            <a class="nav-item" onclick="showSettings()">
+                <i class="fas fa-cog"></i>
+                <span>Настройки</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Модальное окно добавления операции -->
+    <div class="modal" id="addOperationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalOperationTitle">Добавить операцию</h2>
+                <button class="close-modal" onclick="closeModal('addOperationModal')">&times;</button>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="changeOperationType('expense')">Расход</div>
+                <div class="tab" onclick="changeOperationType('income')">Доход</div>
+                <div class="tab" onclick="changeOperationType('transfer')">Перевод</div>
+            </div>
+            
+            <form id="operationForm">
+                <div class="form-group">
+                    <label for="operationAmount">Сумма</label>
+                    <input type="number" class="form-control" id="operationAmount" placeholder="0" required step="0.01" min="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="operationCategory">Категория</label>
+                    <select class="form-select" id="operationCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <!-- Категории будут добавляться через JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="operationAccount">Счет</label>
+                    <select class="form-select" id="operationAccount" required>
+                        <option value="">Выберите счет</option>
+                        <!-- Счета будут добавляться через JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="form-group" id="transferAccountGroup" style="display: none;">
+                    <label for="transferAccount">На счет</label>
+                    <select class="form-select" id="transferAccount">
+                        <option value="">Выберите счет назначения</option>
+                        <!-- Счета будут добавляться через JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="operationDate">Дата</label>
+                    <input type="date" class="form-control" id="operationDate" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="operationDescription">Описание</label>
+                    <input type="text" class="form-control" id="operationDescription" placeholder="Краткое описание">
+                </div>
+                
+                <button type="submit" class="btn-primary" id="saveOperationBtn">Сохранить</button>
+                <div class="error-message" id="operationError"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно управления счетами -->
+    <div class="modal" id="accountsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Мои счета</h2>
+                <button class="close-modal" onclick="closeModal('accountsModal')">&times;</button>
+            </div>
+            
+            <div id="accountsList">
+                <div class="loading" id="accountsLoading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <!-- Счета будут добавляться здесь через JavaScript -->
+            </div>
+            
+            <button class="btn-primary" onclick="showAddAccountModal()">Добавить счет</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления счета -->
+    <div class="modal" id="addAccountModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Добавить счет</h2>
+                <button class="close-modal" onclick="closeModal('addAccountModal')">&times;</button>
+            </div>
+            
+            <form id="accountForm">
+                <div class="form-group">
+                    <label for="accountName">Название счета</label>
+                    <input type="text" class="form-control" id="accountName" placeholder="Например: Основная карта" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountType">Тип счета</label>
+                    <select class="form-select" id="accountType" required>
+                        <option value="">Выберите тип</option>
+                        <option value="cash">Наличные</option>
+                        <option value="debit">Дебетовая карта</option>
+                        <option value="credit">Кредитная карта</option>
+                        <option value="digital">Электронный кошелек</option>
+                        <option value="savings">Сберегательный счет</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountBalance">Начальный баланс</label>
+                    <input type="number" class="form-control" id="accountBalance" placeholder="0" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="accountCurrency">Валюта</label>
+                    <select class="form-select" id="accountCurrency" required>
+                        <option value="RUB">Рубли (RUB)</option>
+                        <option value="USD">Доллары (USD)</option>
+                        <option value="EUR">Евро (EUR)</option>
+                        <option value="GBP">Фунты (GBP)</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-primary" id="saveAccountBtn">Сохранить</button>
+                <div class="error-message" id="accountError"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно управления бюджетами -->
+    <div class="modal" id="budgetsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Мои бюджеты</h2>
+                <button class="close-modal" onclick="closeModal('budgetsModal')">&times;</button>
+            </div>
+            
+            <div id="budgetsList">
+                <div class="loading" id="budgetsLoading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <!-- Бюджеты будут добавляться здесь через JavaScript -->
+            </div>
+            
+            <button class="btn-primary" onclick="showAddBudgetModal()">Добавить бюджет</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления бюджета -->
+    <div class="modal" id="addBudgetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Добавить бюджет</h2>
+                <button class="close-modal" onclick="closeModal('addBudgetModal')">&times;</button>
+            </div>
+            
+            <form id="budgetForm">
+                <div class="form-group">
+                    <label for="budgetCategory">Категория</label>
+                    <select class="form-select" id="budgetCategory" required>
+                        <option value="">Выберите категорию</option>
+                        <!-- Категории будут добавляться через JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="budgetAmount">Сумма</label>
+                    <input type="number" class="form-control" id="budgetAmount" placeholder="0" step="0.01" min="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="budgetPeriod">Период</label>
+                    <select class="form-select" id="budgetPeriod" required>
+                        <option value="month">Месяц</option>
+                        <option value="week">Неделя</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-primary" id="saveBudgetBtn">Сохранить</button>
+                <div class="error-message" id="budgetError"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно отчетов -->
+    <div class="modal" id="reportsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Финансовые отчеты</h2>
+                <button class="close-modal" onclick="closeModal('reportsModal')">&times;</button>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="changeReportType('expenses')">Расходы</div>
+                <div class="tab" onclick="changeReportType('incomes')">Доходы</div>
+                <div class="tab" onclick="changeReportType('balance')">Баланс</div>
+            </div>
+            
+            <div id="reportsContent">
+                <div class="loading" id="reportsLoading">
+                    <i class="fas fa-spinner"></i>
+                </div>
+                <!-- Отчеты будут добавляться здесь через JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Профиль пользователя</h2>
+                <button class="close-modal" onclick="closeModal('profileModal')">&times;</button>
+            </div>
+            
+            <div id="profileContent">
+                <div class="user-avatar large" style="width: 80px; height: 80px; margin: 0 auto 20px; font-size: 32px;">
+                    <i class="fas fa-user"></i>
+                </div>
+                <h3 style="text-align: center; margin-bottom: 20px;" id="userName">Загрузка...</h3>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <div class="form-control" id="userEmail">Загрузка...</div>
+                </div>
+                
+                <button class="btn-primary" onclick="signOut()" style="background: var(--expense);">
+                    <i class="fas fa-sign-out-alt"></i> Выйти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkuiozIGcFAzgPCnB8wblQvzPl2f9_zY4",
+            authDomain: "mymoney-f3f09.firebaseapp.com",
+            projectId: "mymoney-f3f09",
+            storageBucket: "mymoney-f3f09.firebasestorage.app",
+            messagingSenderId: "827367785139",
+            appId: "1:827367785139:web:ad7a9fd0e5364f2bb9e6c6",
+            measurementId: "G-CCPNB5T5BG"
+        };
+
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Текущее состояние приложения
+        let currentUser = null;
+        let operations = [];
+        let accounts = [];
+        let categories = [];
+        let budgets = [];
+        let currentTab = 'operations';
+
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', function() {
+            initAuth();
+            initEventListeners();
+            
+            // Установка текущей даты по умолчанию
+            document.getElementById('operationDate').valueAsDate = new Date();
+        });
+
+        // Инициализация аутентификации
+        function initAuth() {
+            auth.onAuthStateChanged(function(user) {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('authScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'flex';
+                    
+                    // Обновляем аватар пользователя
+                    updateUserAvatar();
+                    
+                    // Загружаем данные пользователя
+                    loadUserData();
+                } else {
+                    currentUser = null;
+                    document.getElementById('authScreen').style.display = 'flex';
+                    document.getElementById('appContainer').style.display = 'none';
+                }
+            });
+        }
+
+        // Инициализация обработчиков событий
+        function initEventListeners() {
+            // Кнопки аутентификации
+            document.getElementById('googleSignIn').addEventListener('click', signInWithGoogle);
+            document.getElementById('emailSignIn').addEventListener('click', showEmailLoginModal);
+            document.getElementById('phoneSignIn').addEventListener('click', showPhoneLoginModal);
+            
+            // Обработчики форм
+            document.getElementById('operationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addNewOperation();
+            });
+            
+            document.getElementById('accountForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addNewAccount();
+            });
+            
+            document.getElementById('budgetForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                addNewBudget();
+            });
+        }
+
+        // Функции аутентификации
+        function signInWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(function(result) {
+                    // Успешный вход
+                    console.log("Вход через Google выполнен успешно:", result.user);
+                })
+                .catch(function(error) {
+                    console.error("Ошибка входа через Google:", error);
+                    alert("Ошибка входа: " + error.message);
+                });
+        }
+
+        function showEmailLoginModal() {
+            alert("Вход по почте будет реализован в следующих версиях. Пожалуйста, используйте вход через Google.");
+        }
+
+        function showPhoneLoginModal() {
+            alert("Вход по телефону будет реализован в следующих версиях. Пожалуйста, используйте вход через Google.");
+        }
+
+        function signOut() {
+            auth.signOut()
+                .then(function() {
+                    console.log("Выход выполнен успешно");
+                    closeModal('profileModal');
+                })
+                .catch(function(error) {
+                    console.error("Ошибка выхода:", error);
+                    alert("Ошибка выхода: " + error.message);
+                });
+        }
+
+        // Загрузка данных пользователя
+        function loadUserData() {
+            loadCategories();
+            loadAccounts();
+            loadOperations();
+            loadBudgets();
+        }
+
+        // Загрузка категорий из Firestore
+        function loadCategories() {
+            // Сначала загружаем категории по умолчанию
+            categories = [
+                { id: "1", name: "Продукты", type: "expense", icon: "shopping-cart", userId: "default" },
+                { id: "2", name: "Транспорт", type: "expense", icon: "bus", userId: "default" },
+                { id: "3", name: "Кафе", type: "expense", icon: "coffee", userId: "default" },
+                { id: "4", name: "Развлечения", type: "expense", icon: "film", userId: "default" },
+                { id: "5", name: "Здоровье", type: "expense", icon: "heartbeat", userId: "default" },
+                { id: "6", name: "Одежда", type: "expense", icon: "tshirt", userId: "default" },
+                { id: "7", name: "Коммунальные", type: "expense", icon: "home", userId: "default" },
+                { id: "8", name: "Связь", type: "expense", icon: "phone", userId: "default" },
+                { id: "9", name: "Образование", type: "expense", icon: "book", userId: "default" },
+                { id: "10", name: "Подарки", type: "expense", icon: "gift", userId: "default" },
+                { id: "11", name: "Зарплата", type: "income", icon: "money-check", userId: "default" },
+                { id: "12", name: "Фриланс", type: "income", icon: "laptop", userId: "default" },
+                { id: "13", name: "Инвестиции", type: "income", icon: "chart-line", userId: "default" },
+                { id: "14", name: "Подарки", type: "income", icon: "gift", userId: "default" },
+                { id: "15", name: "Перевод", type: "transfer", icon: "exchange-alt", userId: "default" }
+            ];
+            
+            // Затем пытаемся загрузить пользовательские категории
+            if (currentUser) {
+                db.collection("categories").where("userId", "==", currentUser.uid)
+                    .get()
+                    .then((querySnapshot) => {
+                        querySnapshot.forEach((doc) => {
+                            const category = { id: doc.id, ...doc.data() };
+                            // Заменяем категории по умолчанию или добавляем новые
+                            const index = categories.findIndex(c => c.id === doc.id);
+                            if (index !== -1) {
+                                categories[index] = category;
+                            } else {
+                                categories.push(category);
+                            }
+                        });
+                        
+                        // Обновляем селекторы категорий
+                        populateCategorySelect();
+                    })
+                    .catch((error) => {
+                        console.error("Ошибка загрузки категорий:", error);
+                    });
+            }
+        }
+
+        // Загрузка счетов из Firestore
+        function loadAccounts() {
+            showLoading('accountsLoading', 'accountsList');
+            
+            if (currentUser) {
+                db.collection("accounts").where("userId", "==", currentUser.uid)
+                    .orderBy("createdAt", "desc")
+                    .get()
+                    .then((querySnapshot) => {
+                        accounts = [];
+                        querySnapshot.forEach((doc) => {
+                            accounts.push({ id: doc.id, ...doc.data() });
+                        });
+                        
+                        updateAccountsList();
+                        updateBalance();
+                        populateAccountSelect();
+                        hideLoading('accountsLoading');
+                    })
+                    .catch((error) => {
+                        console.error("Ошибка загрузки счетов:", error);
+                        hideLoading('accountsLoading');
+                        document.getElementById('accountsList').innerHTML = `
+                            <div class="error-message">Ошибка загрузки счетов</div>
+                        `;
+                    });
+            } else {
+                hideLoading('accountsLoading');
+            }
+        }
+
+        // Загрузка операций из Firestore
+        function loadOperations() {
+            showLoading('operationsLoading', 'operationsList');
+            
+            if (currentUser) {
+                const oneMonthAgo = new Date();
+                oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+                
+                db.collection("operations")
+                    .where("userId", "==", currentUser.uid)
+                    .where("date", ">=", oneMonthAgo.toISOString().split('T')[0])
+                    .orderBy("date", "desc")
+                    .orderBy("createdAt", "desc")
+                    .get()
+                    .then((querySnapshot) => {
+                        operations = [];
+                        querySnapshot.forEach((doc) => {
+                            operations.push({ id: doc.id, ...doc.data() });
+                        });
+                        
+                        updateOperationsList();
+                        updateBalance();
+                        hideLoading('operationsLoading');
+                    })
+                    .catch((error) => {
+                        console.error("Ошибка загрузки операций:", error);
+                        hideLoading('operationsLoading');
+                        document.getElementById('operationsList').innerHTML = `
+                            <div class="error-message">Ошибка загрузки операций</div>
+                        `;
+                    });
+            } else {
+                hideLoading('operationsLoading');
+            }
+        }
+
+        // Загрузка бюджетов из Firestore
+        function loadBudgets() {
+            showLoading('budgetsLoading', 'budgetsList');
+            
+            if (currentUser) {
+                db.collection("budgets").where("userId", "==", currentUser.uid)
+                    .get()
+                    .then((querySnapshot) => {
+                        budgets = [];
+                        querySnapshot.forEach((doc) => {
+                            budgets.push({ id: doc.id, ...doc.data() });
+                        });
+                        
+                        updateBudgetsList();
+                        hideLoading('budgetsLoading');
+                    })
+                    .catch((error) => {
+                        console.error("Ошибка загрузки бюджетов:", error);
+                        hideLoading('budgetsLoading');
+                        document.getElementById('budgetsList').innerHTML = `
+                            <div class="error-message">Ошибка загрузки бюджетов</div>
+                        `;
+                    });
+            } else {
+                hideLoading('budgetsLoading');
+            }
+        }
+
+        // Функции работы с UI
+        function updateUserAvatar() {
+            if (currentUser && currentUser.photoURL) {
+                document.getElementById('userAvatar').innerHTML = `
+                    <img src="${currentUser.photoURL}" alt="Аватар" style="width: 100%; height: 100%; border-radius: 50%;">
+                `;
+            } else if (currentUser && currentUser.displayName) {
+                const initials = currentUser.displayName.split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('userAvatar').textContent = initials.substring(0, 2);
+            }
+        }
+
+        function updateBalance() {
+            let totalBalance = 0;
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            
+            accounts.forEach(account => {
+                totalBalance += account.balance || 0;
+            });
+            
+            operations.forEach(operation => {
+                if (operation.type === 'income') {
+                    totalIncome += operation.amount || 0;
+                } else if (operation.type === 'expense') {
+                    totalExpenses += operation.amount || 0;
+                }
+            });
+            
+            document.getElementById('totalBalance').textContent = formatCurrency(totalBalance);
+            document.getElementById('totalIncome').textContent = formatCurrency(totalIncome);
+            document.getElementById('totalExpenses').textContent = formatCurrency(totalExpenses);
+        }
+
+        function updateOperationsList() {
+            const operationsList = document.getElementById('operationsList');
+            
+            if (operations.length === 0) {
+                operationsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <p>Нет операций</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Группируем операции по дате
+            const groupedOperations = {};
+            operations.forEach(op => {
+                const date = op.date;
+                if (!groupedOperations[date]) {
+                    groupedOperations[date] = [];
+                }
+                groupedOperations[date].push(op);
+            });
+            
+            // Сортируем даты в обратном порядке
+            const sortedDates = Object.keys(groupedOperations).sort((a, b) => new Date(b) - new Date(a));
+            
+            let html = '';
+            sortedDates.forEach(date => {
+                const dateObj = new Date(date);
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                let dateLabel;
+                if (date === today.toISOString().split('T')[0]) {
+                    dateLabel = 'Сегодня';
+                } else if (date === yesterday.toISOString().split('T')[0]) {
+                    dateLabel = 'Вчера';
+                } else {
+                    dateLabel = dateObj.toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+                }
+                
+                html += `<div style="margin: 15px 0 5px; font-size: 14px; opacity: 0.7;">${dateLabel}</div>`;
+                
+                groupedOperations[date].forEach(op => {
+                    const category = categories.find(c => c.id === op.categoryId);
+                    const account = accounts.find(a => a.id === op.accountId);
+                    
+                    html += `
+                        <div class="operation">
+                            <div class="operation-info">
+                                <div class="operation-icon">
+                                    <i class="fas fa-${category ? category.icon : 'question'}"></i>
+                                </div>
+                                <div class="operation-details">
+                                    <div class="operation-name">${op.description || (category ? category.name : 'Без категории')}</div>
+                                    <div class="operation-category">${account ? account.name : 'Неизвестный счет'} • ${formatTime(op.createdAt)}</div>
+                                </div>
+                            </div>
+                            <div class="operation-amount ${op.type}">
+                                ${op.type === 'expense' ? '-' : (op.type === 'income' ? '+' : '')}${formatCurrency(op.amount)}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            
+            operationsList.innerHTML = html;
+        }
+
+        function updateAccountsList() {
+            const accountsList = document.getElementById('accountsList');
+            
+            if (accounts.length === 0) {
+                accountsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-wallet"></i>
+                        <p>Нет счетов</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            accounts.forEach(account => {
+                html += `
+                    <div class="account-item">
+                        <div class="account-info">
+                            <div class="account-icon">
+                                <i class="fas fa-${getAccountIcon(account.type)}"></i>
+                            </div>
+                            <div>
+                                <div>${account.name}</div>
+                                <div style="font-size: 12px; opacity: 0.7;">${getAccountTypeName(account.type)}</div>
+                            </div>
+                        </div>
+                        <div>${formatCurrency(account.balance)}</div>
+                    </div>
+                `;
+            });
+            
+            accountsList.innerHTML = html;
+        }
+
+        function updateBudgetsList() {
+            const budgetsList = document.getElementById('budgetsList');
+            
+            if (budgets.length === 0) {
+                budgetsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-chart-pie"></i>
+                        <p>Нет бюджетов</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Рассчитываем текущие траты по категориям
+            const currentSpending = {};
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            operations.forEach(op => {
+                if (op.type === 'expense' && new Date(op.date) >= startOfMonth) {
+                    if (!currentSpending[op.categoryId]) {
+                        currentSpending[op.categoryId] = 0;
+                    }
+                    currentSpending[op.categoryId] += op.amount;
+                }
+            });
+            
+            let html = '';
+            budgets.forEach(budget => {
+                const category = categories.find(c => c.id === budget.categoryId);
+                const spent = currentSpending[budget.categoryId] || 0;
+                const percentage = Math.min(100, (spent / budget.amount) * 100);
+                const isOverBudget = spent > budget.amount;
+                
+                if (category) {
+                    html += `
+                        <div class="budget-item">
+                            <div class="budget-header">
+                                <div>
+                                    <i class="fas fa-${category.icon}"></i> ${category.name}
+                                </div>
+                                <div>${formatCurrency(spent)} / ${formatCurrency(budget.amount)}</div>
+                            </div>
+                            <div class="budget-progress">
+                                <div class="budget-progress-bar ${isOverBudget ? 'budget-over' : ''}" 
+                                     style="width: ${percentage}%;"></div>
+                            </div>
+                            <div class="budget-details">
+                                <div>${budget.period === 'month' ? 'Месячный' : 'Недельный'} бюджет</div>
+                                <div>${Math.round(percentage)}%</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            budgetsList.innerHTML = html;
+        }
+
+        function populateCategorySelect() {
+            const categorySelect = document.getElementById('operationCategory');
+            const budgetCategorySelect = document.getElementById('budgetCategory');
+            
+            if (!categorySelect) return;
+            
+            // Очищаем селекторы
+            categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
+            if (budgetCategorySelect) {
+                budgetCategorySelect.innerHTML = '<option value="">Выберите категорию</option>';
+            }
+            
+            // Получаем активный тип операции
+            const activeTab = document.querySelector('#addOperationModal .tab.active');
+            const type = activeTab ? activeTab.textContent.toLowerCase() : 'expense';
+            
+            // Фильтруем категории по типу
+            const filteredCategories = categories.filter(c => c.type === type);
+            
+            // Заполняем селекторы
+            filteredCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+                
+                if (budgetCategorySelect && type === 'expense') {
+                    const budgetOption = document.createElement('option');
+                    budgetOption.value = category.id;
+                    budgetOption.textContent = category.name;
+                    budgetCategorySelect.appendChild(budgetOption);
+                }
+            });
+        }
+
+        function populateAccountSelect() {
+            const accountSelect = document.getElementById('operationAccount');
+            const transferSelect = document.getElementById('transferAccount');
+            
+            if (!accountSelect) return;
+            
+            accountSelect.innerHTML = '<option value="">Выберите счет</option>';
+            if (transferSelect) {
+                transferSelect.innerHTML = '<option value="">Выберите счет назначения</option>';
+            }
+            
+            accounts.forEach(account => {
+                const option1 = document.createElement('option');
+                option1.value = account.id;
+                option1.textContent = account.name;
+                accountSelect.appendChild(option1);
+                
+                if (transferSelect) {
+                    const option2 = document.createElement('option');
+                    option2.value = account.id;
+                    option2.textContent = account.name;
+                    transferSelect.appendChild(option2);
+                }
+            });
+        }
+
+        // Функции работы с модальными окнами
+        function showAddOperationModal(type) {
+            if (type) {
+                changeOperationType(type);
+            }
+            document.getElementById('addOperationModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function changeOperationType(type) {
+            // Активируем соответствующую вкладку
+            const tabs = document.querySelectorAll('#addOperationModal .tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            if (type === 'expense') {
+                tabs[0].classList.add('active');
+                document.getElementById('modalOperationTitle').textContent = 'Добавить расход';
+            } else if (type === 'income') {
+                tabs[1].classList.add('active');
+                document.getElementById('modalOperationTitle').textContent = 'Добавить доход';
+            } else if (type === 'transfer') {
+                tabs[2].classList.add('active');
+                document.getElementById('modalOperationTitle').textContent = 'Сделать перевод';
+            }
+            
+            // Показываем/скрываем поле для перевода
+            const transferGroup = document.getElementById('transferAccountGroup');
+            if (type === 'transfer') {
+                transferGroup.style.display = 'block';
+                document.getElementById('transferAccount').setAttribute('required', 'true');
+            } else {
+                transferGroup.style.display = 'none';
+                document.getElementById('transferAccount').removeAttribute('required');
+            }
+            
+            // Обновляем категории
+            populateCategorySelect();
+        }
+
+        function showAccounts() {
+            updateAccountsList();
+            document.getElementById('accountsModal').style.display = 'flex';
+        }
+
+        function showAddAccountModal() {
+            document.getElementById('addAccountModal').style.display = 'flex';
+        }
+
+        function showBudgets() {
+            updateBudgetsList();
+            document.getElementById('budgetsModal').style.display = 'flex';
+        }
+
+        function showAddBudgetModal() {
+            document.getElementById('addBudgetModal').style.display = 'flex';
+        }
+
+        function showReports() {
+            document.getElementById('reportsModal').style.display = 'flex';
+            generateReports();
+        }
+
+        function showSettings() {
+            alert("Настройки будут реализованы в следующих версиях");
+        }
+
+        function showProfile() {
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.displayName || 'Пользователь';
+                document.getElementById('userEmail').textContent = currentUser.email || 'Не указан';
+                document.getElementById('profileModal').style.display = 'flex';
+            }
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Активируем выбранную вкладку
+            event.target.classList.add('active');
+            
+            // Показываем соответствующий контент
+            if (tabName === 'operations') {
+                loadOperations();
+            } else if (tabName === 'accounts') {
+                showAccounts();
+            } else if (tabName === 'budgets') {
+                showBudgets();
+            }
+        }
+
+        // Функции работы с данными
+        function addNewOperation() {
+            const amount = parseFloat(document.getElementById('operationAmount').value);
+            const categoryId = document.getElementById('operationCategory').value;
+            const accountId = document.getElementById('operationAccount').value;
+            const transferAccountId = document.getElementById('transferAccount').value;
+            const date = document.getElementById('operationDate').value;
+            const description = document.getElementById('operationDescription').value;
+            
+            if (!amount || !categoryId || !accountId || !date) {
+                document.getElementById('operationError').textContent = 'Заполните все обязательные поля';
+                return;
+            }
+            
+            const type = document.querySelector('#addOperationModal .tab.active').textContent.toLowerCase();
+            const category = categories.find(c => c.id === categoryId);
+            
+            // Блокируем кнопку сохранения
+            const saveBtn = document.getElementById('saveOperationBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранение...';
+            
+            const newOperation = {
+                amount,
+                type,
+                categoryId,
+                accountId,
+                date,
+                description: description || (category ? category.name : 'Операция'),
+                createdAt: new Date().toISOString(),
+                userId: currentUser.uid
+            };
+            
+            // Для переводов добавляем счет назначения
+            if (type === 'transfer' && transferAccountId) {
+                newOperation.transferAccountId = transferAccountId;
+            }
+            
+            // Сохраняем операцию в Firestore
+            db.collection("operations").add(newOperation)
+                .then((docRef) => {
+                    console.log("Операция добавлена с ID: ", docRef.id);
+                    
+                    // Обновляем баланс счета
+                    updateAccountBalance(accountId, amount, type, transferAccountId);
+                    
+                    // Закрываем модальное окно и сбрасываем форму
+                    closeModal('addOperationModal');
+                    document.getElementById('operationForm').reset();
+                    document.getElementById('operationDate').valueAsDate = new Date();
+                    
+                    // Обновляем интерфейс
+                    loadOperations();
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                    document.getElementById('operationError').textContent = '';
+                })
+                .catch((error) => {
+                    console.error("Ошибка добавления операции: ", error);
+                    document.getElementById('operationError').textContent = 'Ошибка сохранения операции';
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                });
+        }
+
+        function updateAccountBalance(accountId, amount, type, transferAccountId = null) {
+            const accountRef = db.collection("accounts").doc(accountId);
+            
+            // Получаем текущий баланс счета
+            accountRef.get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const account = doc.data();
+                        let newBalance = account.balance;
+                        
+                        if (type === 'income') {
+                            newBalance += amount;
+                        } else if (type === 'expense') {
+                            newBalance -= amount;
+                        } else if (type === 'transfer' && transferAccountId) {
+                            newBalance -= amount;
+                            
+                            // Обновляем счет назначения
+                            const transferAccountRef = db.collection("accounts").doc(transferAccountId);
+                            transferAccountRef.get()
+                                .then((transferDoc) => {
+                                    if (transferDoc.exists) {
+                                        const transferAccount = transferDoc.data();
+                                        const newTransferBalance = transferAccount.balance + amount;
+                                        
+                                        transferAccountRef.update({
+                                            balance: newTransferBalance,
+                                            updatedAt: new Date().toISOString()
+                                        });
+                                    }
+                                })
+                                .catch((error) => {
+                                    console.error("Ошибка обновления счета назначения: ", error);
+                                });
+                        }
+                        
+                        // Обновляем баланс счета
+                        accountRef.update({
+                            balance: newBalance,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error("Ошибка обновления баланса счета: ", error);
+                });
+        }
+
+        function addNewAccount() {
+            const name = document.getElementById('accountName').value;
+            const type = document.getElementById('accountType').value;
+            const balance = parseFloat(document.getElementById('accountBalance').value);
+            const currency = document.getElementById('accountCurrency').value;
+            
+            if (!name || !type || isNaN(balance)) {
+                document.getElementById('accountError').textContent = 'Заполните все обязательные поля';
+                return;
+            }
+            
+            // Блокируем кнопку сохранения
+            const saveBtn = document.getElementById('saveAccountBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранение...';
+            
+            const newAccount = {
+                name,
+                type,
+                balance,
+                currency,
+                createdAt: new Date().toISOString(),
+                userId: currentUser.uid
+            };
+            
+            // Сохраняем счет в Firestore
+            db.collection("accounts").add(newAccount)
+                .then((docRef) => {
+                    console.log("Счет добавлен с ID: ", docRef.id);
+                    
+                    // Закрываем модальное окно и сбрасываем форму
+                    closeModal('addAccountModal');
+                    document.getElementById('accountForm').reset();
+                    
+                    // Обновляем интерфейс
+                    loadAccounts();
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                    document.getElementById('accountError').textContent = '';
+                })
+                .catch((error) => {
+                    console.error("Ошибка добавления счета: ", error);
+                    document.getElementById('accountError').textContent = 'Ошибка сохранения счета';
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                });
+        }
+
+        function addNewBudget() {
+            const categoryId = document.getElementById('budgetCategory').value;
+            const amount = parseFloat(document.getElementById('budgetAmount').value);
+            const period = document.getElementById('budgetPeriod').value;
+            
+            if (!categoryId || isNaN(amount)) {
+                document.getElementById('budgetError').textContent = 'Заполните все обязательные поля';
+                return;
+            }
+            
+            // Проверяем, не существует ли уже бюджет для этой категории
+            const existingBudget = budgets.find(b => b.categoryId === categoryId && b.period === period);
+            
+            // Блокируем кнопку сохранения
+            const saveBtn = document.getElementById('saveBudgetBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранение...';
+            
+            const newBudget = {
+                categoryId,
+                amount,
+                period,
+                createdAt: new Date().toISOString(),
+                userId: currentUser.uid
+            };
+            
+            let promise;
+            if (existingBudget) {
+                // Обновляем существующий бюджет
+                promise = db.collection("budgets").doc(existingBudget.id).update(newBudget);
+            } else {
+                // Добавляем новый бюджет
+                promise = db.collection("budgets").add(newBudget);
+            }
+            
+            promise
+                .then(() => {
+                    console.log("Бюджет сохранен");
+                    
+                    // Закрываем модальное окно и сбрасываем форму
+                    closeModal('addBudgetModal');
+                    document.getElementById('budgetForm').reset();
+                    
+                    // Обновляем интерфейс
+                    loadBudgets();
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                    document.getElementById('budgetError').textContent = '';
+                })
+                .catch((error) => {
+                    console.error("Ошибка сохранения бюджета: ", error);
+                    document.getElementById('budgetError').textContent = 'Ошибка сохранения бюджета';
+                    
+                    // Разблокируем кнопку сохранения
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                });
+        }
+
+        function generateReports() {
+            // Простая реализация отчетов - можно расширить в будущем
+            const reportsContent = document.getElementById('reportsContent');
+            reportsContent.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-chart-pie" style="font-size: 48px; margin-bottom: 15px; color: var(--accent);"></i>
+                    <h3>Отчеты по финансам</h3>
+                    <p>Здесь будут отображаться ваши финансовые отчеты и аналитика.</p>
+                    <p>Функция находится в разработке и будет доступна в следующих версиях.</p>
+                </div>
+            `;
+        }
+
+        // Вспомогательные функции
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(amount);
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getAccountIcon(type) {
+            switch (type) {
+                case 'cash': return 'money-bill-wave';
+                case 'debit': return 'credit-card';
+                case 'credit': return 'credit-card';
+                case 'digital': return 'mobile-alt';
+                case 'savings': return 'piggy-bank';
+                default: return 'wallet';
+            }
+        }
+
+        function getAccountTypeName(type) {
+            switch (type) {
+                case 'cash': return 'Наличные';
+                case 'debit': return 'Дебетовая карта';
+                case 'credit': return 'Кредитная карта';
+                case 'digital': return 'Электронный кошелек';
+                case 'savings': return 'Сберегательный счет';
+                default: return 'Другой тип';
+            }
+        }
+
+        function showLoading(loadingId, containerId) {
+            document.getElementById(loadingId).style.display = 'block';
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
+
+        function hideLoading(loadingId) {
+            document.getElementById(loadingId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>
